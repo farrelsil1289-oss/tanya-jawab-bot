@@ -80,7 +80,18 @@ ${text}
   }
 });
 
+function keepAliveLog() {
+  console.log(`[${new Date().toLocaleString("id-ID")}] 🤖 Bot AI masih hidup`);
+}
+
 app.listen(PORT, () => {
   console.log(`✅ Server jalan di port ${PORT}`);
   console.log(`✅ Model Gemini: ${GEMINI_MODEL}`);
+  // log tiap 3 jam
+  keepAliveLog();
+
+  setInterval(() => {
+    keepAliveLog();
+  }, 3 * 60 * 60 * 1000);
+  
 });
