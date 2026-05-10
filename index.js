@@ -1,6 +1,8 @@
 import express from "express";
 import TelegramBot from "node-telegram-bot-api";
 import { GoogleGenAI } from "@google/genai";
+import axios from "axios";
+import * as cheerio from "cheerio";
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -8,6 +10,7 @@ const PORT = process.env.PORT || 3000;
 const BOT_TOKEN = process.env.BOT_TOKEN;
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 const GEMINI_MODEL = process.env.GEMINI_MODEL || "gemini-2.5-flash-lite";
+const KNOWLEDGE_URL = process.env.KNOWLEDGE_URL || "";
 
 if (!BOT_TOKEN || !GEMINI_API_KEY) {
   console.error("❌ ENV belum lengkap. Isi BOT_TOKEN dan GEMINI_API_KEY di Render.");
@@ -26,6 +29,34 @@ app.get("/ping", (req, res) => {
   res.send("pong");
 });
 
+async function ambilKnowledgeDariLink() {
+  if (!KNOWLEDGE_URL) return "";
+
+  try {
+    const { data } = await axios.get(KNOWLEDGE_URL, {
+      timeout: 10000,
+      headers: {
+        "User-Agent": "Mozilla/5.0",
+      },
+    });
+
+    const $ = cheerio.load(data);
+
+    $("script, style, nav, footer, header").remove();
+
+    const text = $("body")
+      .text()
+      .replace(/\s+/g, " ")
+      .trim()
+      .slice(0, 7000);
+
+    return text;
+  } catch (err) {
+    console.error("❌ Gagal ambil knowledge:", err?.message || err);
+    return "";
+  }
+}
+
 bot.onText(/\/start/, async (msg) => {
   await bot.sendMessage(
     msg.chat.id,
@@ -42,8 +73,11 @@ bot.on("message", async (msg) => {
   try {
     await bot.sendMessage(chatId, "✍️ Lagi gua bikinin bro...");
 
+    const knowledge = await ambilKnowledgeDariLink();    
     const prompt = `
 Kamu adalah AI copywriter Telegram Indonesia.
+Gunakan knowledge berikut jika relevan:
+${knowledge}
 
 Tugas utama:
 - Membantu user membuat template promosi dan penjualan yang menarik.
